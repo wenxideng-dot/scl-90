@@ -117,7 +117,7 @@
 </div>
 
 <div class="sticky-actions">
-    <!-- button class="btn btn-test" onclick="autoFill()">模拟填卷</button -->
+    <button class="btn btn-test" onclick="autoFill()">模拟填卷</button>
     <button class="btn btn-primary" onclick="submit()">生成报告</button>
     <button id="dlBtn" class="btn btn-export" onclick="exportData()">导出 CSV 详情</button>
 </div>
@@ -202,14 +202,43 @@
     }
 
     function exportData() {
-        let csv = "\uFEFF题号,条目内容,得分\n";
-        for(let i=1; i<=90; i++) csv += `${i},${questions[i-1]},${currentScores[i]}\n`;
-        const blob = new Blob([csv], {type: 'text/csv'});
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `SCL90测评报告_${new Date().toLocaleDateString()}.csv`;
-        link.click();
+    // 1. 初始化 CSV 头部，\uFEFF 用于解决 Excel 打开中文乱码问题
+    let csv = "\uFEFF";
+
+    // --- 第一部分：维度因子分 ---
+    csv += "【维度因子分析】\n";
+    csv += "维度名称,因子分,评估结论\n"; // 表头
+
+    for(let f in factorDefs) {
+        const ids = factorDefs[f].ids;
+        // 计算该维度的总分
+        const sum = ids.reduce((a,b) => a + currentScores[b], 0);
+        // 计算均分 (保留2位小数)
+        const avg = (sum / ids.length).toFixed(2);
+        // 简单的判断逻辑 (≥2分提示需关注)
+        const status = avg >= 2.0 ? "需关注" : "正常";
+        
+        csv += `${f},${avg},${status}\n`;
     }
+
+    // 添加空行，把两部分数据隔开
+    csv += "\n";
+
+    // --- 第二部分：原始条目得分 ---
+    csv += "【90项原始答卷详情】\n";
+    csv += "题号,条目内容,得分\n"; // 表头
+    
+    for(let i=1; i<=90; i++) {
+        csv += `${i},${questions[i-1]},${currentScores[i]}\n`;
+    }
+
+    // --- 生成并下载文件 ---
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `SCL90测评报告_${new Date().toLocaleDateString()}.csv`;
+    link.click();
+}
 </script>
 
 </body>
